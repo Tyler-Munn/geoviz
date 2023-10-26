@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Leaflet Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"/>
+    <style>
+        html { height:100%;}
+        body {
+            height:100%;
+            padding: 0;
+            margin: 0;
+        }
+        
+        #map {
+            width: 100%;
+            margin: 0 auto;
+            height: 95%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Our web map and content will go here -->
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <div id="map" class="mapelement">
+    </div>
+    <script>
+        var map = L.map('map', {center: [39.981192, -75.155399], zoom: 10});
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        map.doubleClickZoom.disable();
+
+
+        // load GeoJSON from an external file
+        $.getJSON("blood_lead.geojson",function(data){
+            // add GeoJSON layer to the map once the file is loaded
+            L.geoJson(data, {
+                
+            }).addTo(map);
+        });
+
+        var neighborhoodsLayer = null;
+        $.getJSON("blood_lead.geojson",function(data){
+            neighborhoodsLayer = L.geoJson(data, {
+                style: styleFunc,
+                onEachFeature: function(feature, layer){
+                layer.bindPopup('Blood lead level: '+feature.properties.perc_5plus);
+                }
+            }).addTo(map);
+        });
+
+        function styleFunc(feature) {
+            return {
+                fillColor: setColorFunc(feature.properties.perc_5plus),
+                fillOpacity: 0.9,
+                weight: 1,
+                opacity: 1,
+                color: '#ffffff',
+                dashArray: '3'
+            };
+        }
+
+        // Set function for color ramp, you can use a better palette
+        function setColorFunc(density){
+            return density > 15 ? '#800000' :
+                density > 10 ? '#A0522D' :
+                density > 5 ? '#DAA520' :
+                density > 0 ? '#FFF8DC' :
+                                '#BFBCBB';
+        };
+
+
+
+        // Now we’ll use the onEachFeature option to add the listeners on our state layers:
+        function onEachFeatureFunc(feature, layer){
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomFeature
+            });
+            layer.bindPopup('Blood lead level: '+feature.properties.perc_5plus);
+        }
+
+        function highlightFeature(e){
+            var layer = e.target;
+
+            layer.setStyle({
+                weight: 5,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+            // for different web browsers
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+        }
+
+        // Define what happens on mouseout:
+        function resetHighlight(e) {
+            neighborhoodsLayer.resetStyle(e.target);
+        }
+
+        // As an additional touch, let’s define a click listener that zooms to the state: 
+        function zoomFeature(e){
+            console.log(e.target.getBounds());
+            map.fitBounds(e.target.getBounds().pad(1.5));
+        }
+
+    </script>
+</body>
+</html>
